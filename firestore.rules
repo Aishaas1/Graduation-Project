@@ -1,0 +1,55 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signed() { return request.auth != null; }
+    function admin() { return signed() && request.auth.token.get('admin', false) == true; }
+    function bounded(s, max) { return s is string && s.size() > 0 && s.size() <= max; }
+    function validComplaint(d) {
+      return d.keys().hasAll(['ownerId','ownerName','title','category','description','district','accused','employer','accusedPhone','created','status','attachments'])
+        && d.keys().hasOnly(['ownerId','ownerName','title','category','description','district','accused','employer','accusedPhone','created','status','attachments'])
+        && bounded(d.ownerName,200) && bounded(d.title,150) && bounded(d.description,5000)
+        && bounded(d.district,200) && bounded(d.created,50)
+        && d.accused is string && d.accused.size() <= 200
+        && d.employer is string && d.employer.size() <= 200
+        && d.accusedPhone is string && d.accusedPhone.size() <= 200
+        && d.category in ['خدمات عامة','فساد إداري','مياه وصرف صحي','كهرباء','طرق','صحة','تعليم','أخرى']
+        && d.status in ['جديدة','قيد المراجعة','قيد المعالجة','تم الحل','مرفوضة']
+        && d.attachments is list && d.attachments.size() <= 3;
+    }
+    match /users/{uid} {
+      allow read: if signed() && (request.auth.uid == uid || admin());
+      allow create, update: if signed() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['name','phone','email'])
+        && bounded(request.resource.data.name,200)
+        && bounded(request.resource.data.phone,20)
+        && request.resource.data.email == request.auth.token.email;
+      allow delete: if false;
+    }
+    match /complaints/{id} {
+      allow read: if signed() && (resource.data.ownerId == request.auth.uid || admin());
+      allow create: if signed() && validComplaint(request.resource.data)
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.ownerName == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.name
+        && request.resource.data.status == 'جديدة' && request.resource.data.attachments == [];
+      allow update: if signed() && validComplaint(request.resource.data) && (
+        (admin() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']))
+        || (resource.data.ownerId == request.auth.uid && resource.data.status == 'جديدة'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['attachments'])));
+      // Allows rollback of a new complaint when its attachment upload fails.
+      allow delete: if signed() && resource.data.ownerId == request.auth.uid
+        && resource.data.status == 'جديدة' && resource.data.attachments == [];
+      match /messages/{mid} {
+        function parent() { return get(/databases/$(database)/documents/complaints/$(id)).data; }
+        allow read: if signed() && (parent().ownerId == request.auth.uid || admin());
+        allow create: if signed() && (parent().ownerId == request.auth.uid || admin())
+          && request.resource.data.keys().hasOnly(['author','text','senderId','time','event'])
+          && request.resource.data.senderId == request.auth.uid
+          && request.resource.data.author == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.name
+          && bounded(request.resource.data.text,2000) && bounded(request.resource.data.time,50)
+          && request.resource.data.event is bool
+          && (request.resource.data.event == false || admin());
+        allow update, delete: if false;
+      }
+    }
+  }
+}

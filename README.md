@@ -47,7 +47,7 @@ npm ci
 npm run test:rules
 ```
 
-اختبارات القواعد تعمل على المحاكيات المحلية وتحتاج Java 21 وNode 22. ملف GitHub Actions يشغّل التحليل والاختبارات وبناء الويب واختبار الصلاحيات. راجع [نطاق التنفيذ](docs/REQUIREMENTS.md) و[دليل الاستخدام](docs/USER_GUIDE.md).
+اختبارات القواعد تعمل على المحاكيات المحلية وتحتاج Java 21 وNode 22. ملف GitHub Actions يشغّل التحليل والاختبارات وبناء الويب واختبار الصلاحيات، ويحاول بناء APK تجريبي يمكن تنزيله من Artifacts بعد نجاح مهمة android-demo. راجع [نطاق التنفيذ](docs/REQUIREMENTS.md) و[دليل الاستخدام](docs/USER_GUIDE.md).
 
 ## تنظيم المشروع
 
@@ -62,3 +62,9 @@ npm run test:rules
 | `tools/set-admin.mjs` | منح صلاحية الإدارة من جهاز موثوق |
 
 لا تحفظ كلمات المرور في Firestore؛ تتولى Firebase Authentication إدارتها. لا ترفع مفاتيح حسابات الخدمة أو ملفات التوقيع أو بيانات المواطنين إلى GitHub.
+
+## صور التطبيق والتحقق
+
+![لوحة المواطن](docs/dashboard.png)
+
+راجع [تقرير التحقق ونتائجه](docs/VALIDATION.md) لمعرفة ما تم اختباره وحدود النسخة الحالية. الخط العربي Noto Sans Arabic مضمن محليًا بترخيص SIL OFL في `assets/fonts/OFL.txt`.

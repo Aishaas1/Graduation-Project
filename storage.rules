@@ -1,0 +1,16 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /complaints/{uid}/{complaintId}/{file} {
+      function signed() { return request.auth != null; }
+      function complaint() { return firestore.get(/databases/(default)/documents/complaints/$(complaintId)).data; }
+      function owner() { return signed() && request.auth.uid == uid && complaint().ownerId == uid; }
+      allow read: if signed() && (owner() || request.auth.token.get('admin', false) == true);
+      allow create: if owner() && complaint().status == 'جديدة'
+        && request.resource.size <= 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/(jpeg|png)|application/pdf');
+      allow delete: if owner() && complaint().status == 'جديدة';
+      allow update: if false;
+    }
+  }
+}
